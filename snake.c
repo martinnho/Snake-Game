@@ -1,65 +1,102 @@
 #include <ncurses.h>
-#include <stdlib.h>
-#include <time.h>
-#include <stdbool.h>
 
-#define WIDTH 40
-#define HEIGHT 20
-#define MAX_LENGTH 100
+#define GAME_WIDTH 50
+#define GAME_HEIGHT 20
 
-typedef struct
-{
-    int x[MAX_LENGTH];
-    int y[MAX_LENGTH];
-    int length;
-    int directionx;
-    int directiony;
-} Snake;
-
-Snake snake;
-bool gameOver = FALSE;
-
-char screenBuffer[HEIGHT][WIDTH];
-
-void inicialize();
+// Snake segment
+typedef struct {
+    int x, y;
+} Body;
 
 int main(void)
 {
-    inicialize();
-
-}
-
-void inicialize()
-{
+    // Setup
     initscr();
     cbreak();
     noecho();
-    keypad(stdscr, TRUE);
     curs_set(0);
-    start_color();
+    keypad(stdscr, TRUE);
+    timeout(100);
 
-    init_pair(1, COLOR_GREEN, COLOR_BLACK);
-    init_pair(2, COLOR_RED, COLOR_BLACK);
-    init_pair(3, COLOR_YELLOW, COLOR_BLACK);
+    // Setup colors
+    if (has_colors()) {
+        start_color();
+        init_pair(1, COLOR_GREEN, COLOR_BLACK);
+        init_pair(2, COLOR_CYAN, COLOR_BLACK);
+    }
 
-    snake.length = 1;
-    snake.x[0] = WIDTH / 2;
-    snake.y[0] = HEIGHT / 2;
-    snake.directionx = 1;
-    snake.directiony = 0;
+    Body snake[100];
+    int size = 5;
 
-    for (int i = 0; i < HEIGHT; i++)
+    // Init head
+    snake[0].x = GAME_WIDTH / 2;
+    snake[0].y = GAME_HEIGHT / 2;
+
+    // Init body
+    for (int i = 1; i < size; i++)
     {
-        for (int j = 0; j < WIDTH; j++)
-        {
-            if (i == 0 || i == HEIGHT - 1 || j == 0 || j == WIDTH - 1)
-            {
-                screenBuffer[i][j] = '#';
-            }
-            else
-            {
-                screenBuffer[i][j] = ' ';
+        snake[i].x = snake[0].x - i;
+        snake[i].y = snake[0].y;
+    }
+
+    int direction = KEY_RIGHT;
+
+    // Game loop
+    while (1)
+    {
+        clear();
+
+        // Render Border
+        attron(COLOR_PAIR(2));
+        for (int i = 0; i <= GAME_WIDTH; i++) {
+            mvprintw(0, i, "#");          
+            mvprintw(GAME_HEIGHT, i, "#");
+        }
+        for (int i = 0; i <= GAME_HEIGHT; i++) {
+            mvprintw(i, 0, "#");
+            mvprintw(i, GAME_WIDTH, "#");
+        }
+        attroff(COLOR_PAIR(2));
+
+        // Render Snake
+        attron(COLOR_PAIR(1));
+        for (int i = 0; i < size; i++) {
+            if (i == 0) {
+                mvprintw(snake[i].y, snake[i].x, "@");
+            } else {
+                mvprintw(snake[i].y, snake[i].x, "o");
             }
         }
+        attroff(COLOR_PAIR(1));
+
+        refresh();
+
+        // Input
+        int key = getch();
+        if (key != ERR)
+        {
+            if (key == 'q' || key == 'Q')
+            {
+                break;
+            }
+            direction = key;
+        }
+
+        // Update body
+        for (int i = size - 1; i > 0; i--) {
+            snake[i] = snake[i - 1];
+        }
+
+        // Update head
+        switch (direction) {
+            case KEY_UP:    snake[0].y--; break;
+            case KEY_DOWN:  snake[0].y++; break;
+            case KEY_LEFT:  snake[0].x--; break;
+            case KEY_RIGHT: snake[0].x++; break;
+        }
     }
+
+    // Exit
+    endwin();
+    return 0;
 }
